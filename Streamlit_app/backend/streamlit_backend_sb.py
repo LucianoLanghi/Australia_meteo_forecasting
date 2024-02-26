@@ -95,48 +95,6 @@ class ProjetAustralieSoutenance:
         self.df_resample["Mois"] = self.df_resample.Date.dt.month
         self.df_resample["AAMM"] = self.df_resample.Annee.astype(str)+"-"+self.df_resample.Mois.astype(str)
 
-    # remplace les variables categorielles de direction de vent par les composantes x et y
-    def remplace_direction_vent(self):
-        # si deja substitué: on sort
-        if hasattr(self.df, "WindGustDir_X"):
-            return
-        
-        print (self.df.columns)
-        self._remplace_direction_vent("WindGustDir", "WindGustSpeed")
-        print (self.df.columns)
-        self._remplace_direction_vent("WindDir3pm", "WindSpeed3pm")
-        print (self.df.columns)
-        self._remplace_direction_vent("WindDir9am", "WindSpeed9am")       
-        print (self.df.columns)
-    
-    # remplace une colonne categorielle de direction de vent par deux colonnes numeriques
-    def _remplace_direction_vent(self, nom_colonne_dir: str, nom_colonne_speed: str):
-        df_direction = pd.DataFrame()
-        df_direction["dir"]=["E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N", "NNE", "NE", "ENE"]
-        
-        # increment pour chacune des directions (sens horaire)
-        increment=-np.pi/8
-        
-        df_direction["rad"]=increment*df_direction.index
-        df_direction["sin"]=np.sin(df_direction.rad)
-        df_direction["cos"]=np.cos(df_direction.rad)
-        
-        df_direction.loc[len(df_direction)]=[None, 0, 0, 0]
-        
-        self.df_dir_vent = df_direction
-        
-        # jointure pour deduire les cos et sin multipliés par la vitesse
-        df_temp = self.df.merge(df_direction, left_on=nom_colonne_dir, right_on="dir")
-        df_temp.index = df_temp.Date
-        df_temp = df_temp.sort_index()
-        
-        df_temp[nom_colonne_dir+"_X"]=df_temp.cos*df_temp[nom_colonne_speed]
-        df_temp[nom_colonne_dir+"_Y"]=df_temp.sin*df_temp[nom_colonne_speed]
-        df_temp[nom_colonne_dir+"_RAD"]=df_temp["rad"]  # on garde rad pour les graphes
-        
-        self.df = df_temp.drop(columns=["cos", "sin", "rad", "dir", nom_colonne_dir])
-
-
     # histogramme des temperatures / precipitations pour une location
     def histogramme_temperatures_precipitations(self, location:str):
         # si l'attribut n'a pas encore été créé, alors on fait la reindexation temporelle
@@ -212,7 +170,7 @@ class ProjetAustralieSoutenance:
 
     # affiche climats
     def affiche_climats(self):
-        df = self.data.drop("Date", axis=1).reset_index()[['Location', 'Climat', 'lng', 'lat']].drop_duplicates()
+        #df = self.data.drop("Date", axis=1).reset_index()[['Location', 'Climat', 'lng', 'lat']].drop_duplicates()
         
         fig = px.scatter_mapbox(self.df_moyenne.sort_values(by="Climat"), 
                             lat='lat', 
@@ -267,7 +225,7 @@ class ProjetAustralieSoutenance:
 
     # clusterisation des villes en 7 zones climatiques, basées sur la moyenne des variables sur les 10 ans de relevés
     def clusterisation_groupee(self):
-        from sklearn.cluster import AgglomerativeClustering, MeanShift, estimate_bandwidth
+        from sklearn.cluster import AgglomerativeClustering#, MeanShift, estimate_bandwidth
         from scipy.cluster.hierarchy import linkage, dendrogram
 
         self._ajoute_prop_locations()
@@ -418,16 +376,42 @@ class ProjetAustralieSoutenance:
         ax.set_title(titre, fontsize=20)
 
     # affiche repartition vent    
-    def graphe_vent(self, location:str):
+    def graphe_vent(self, location:str=""):
         if not hasattr(self.df, "WindGustDir_RAD"):       
             self.remplace_direction_vent()
         
         if (location==""):
             df_filtre = self.df
         else:
-            df_filtre = self.df[self.data.Location == location]
+            df_filtre = self.df[self.df.Location == location]
        
+        #plt.figure(figsize=(24, 8))
+#        fig, ax = plt.subplots(1,3)
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, subplot_kw={'polar': True}, figsize=(8, 3.5))
+        fig.subplots_adjust(wspace=0.6)
+       
+#        ax1 = fig.add_subplot(131, polar=True)
+#        ax1.set_axes_off()
+        self.graphe_vent_feature(df_filtre, location, "WindGustDir", ax1)
+#        ax1 = fig.add_subplot(132, polar=True)
+        self.graphe_vent_feature(df_filtre, location, "WindDir9am", ax2)
+#        ax1 = fig.add_subplot(133, polar=True)
+        self.graphe_vent_feature(df_filtre, location, "WindDir3pm", ax3)
         
+        nom_title="Distribution des directions du vent - "
+        if (location==""):
+            nom_title+="Australie complète"
+        else:
+            nom_title+=location
+
+        plt.suptitle(nom_title)
+        plt.subplots_adjust(right=0.9)
+        
+        # on remet le df tel qu'il etait initialement
+        self.df = self.df_orig
+        
+        
+    def test(self, location:str, df_filtre):        
         vc = df_filtre.WindGustDir_RAD.value_counts(normalize=True).sort_index()
         #vc.append(vc[0]) # pour fermer le tracé
         
@@ -443,7 +427,7 @@ class ProjetAustralieSoutenance:
         ax.set_xticklabels(["E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N", "NNE", "NE", "ENE"])
         ax.set_yticklabels([])
         
-        nom_title="Distribution des directions du vent (WindGustDir) - "
+        nom_title="Distribution des directions du vent ("+variable+") - "
         if (location==""):
             nom_title+="Australie complète"
         else:
@@ -452,6 +436,23 @@ class ProjetAustralieSoutenance:
         
         # on remet le df tel qu'il etait initialement
         self.df = self.df_orig
+
+    # affiche le vent pour une feature
+    def graphe_vent_feature(self, df_filtre, location:str, variable:str, ax):
+        vc = df_filtre[variable+"_RAD"].value_counts(normalize=True).sort_index()
+        #vc.append(vc[0]) # pour fermer le tracé
+        
+        print (vc)
+        self.vc = vc
+        
+        ax.fill(np.array(vc.index), vc.values, '#48A', alpha=.8)
+
+        ax.set_xticks(np.arange(2*np.pi, 0, -np.pi/8))
+        ax.set_xticklabels(["E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N", "NNE", "NE", "ENE"])
+        ax.set_yticklabels([])
+        
+        ax.set_title(variable)
+        
 
     # remplace les variables categorielles de direction de vent par les composantes x et y
     def remplace_direction_vent(self):

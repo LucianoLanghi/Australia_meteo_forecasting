@@ -1,7 +1,8 @@
 import streamlit as st
 
 from pages import page_introduction, page_conclusion, page_jeu_de_donnees, page_predict_raintomorrow, \
-    page_predict_rain_long_horizon, page_predict_maxtemps, page_preprocessing_feature_engineering, page_missing_values
+    page_predict_rain_long_horizon, page_predict_maxtemps, page_preprocessing_feature_engineering, \
+    page_missing_values, page_new_features
 
 from backend.streamlit_backend_sb import ProjetAustralieSoutenance
 
@@ -20,6 +21,7 @@ pages = ["Introduction",
          "Le jeu de données",
          "Valeurs manquantes",
          "Pre-processing",
+         "Ajout de features",
          "Prédiction de RainTomorrow",
          "Prédiction de la pluie",
          "Prédiction de MaxTemps",
@@ -33,24 +35,31 @@ st.sidebar.markdown(page)
 if page == pages[0]:
     page_introduction.app(pas)
     
-if page == pages[1]:
+elif page == pages[1]:
     page_jeu_de_donnees.app(pas)
 
-if page == pages[2]:
+elif page == pages[2]:
     page_missing_values.app(pas)
 
-if page == pages[3]:
+elif page == pages[3]:
     page_preprocessing_feature_engineering.app(pas)
 
-if page == pages[4]:
+elif page == pages[4]:
+    page_new_features.app(pas)
+
+elif page == pages[5]:
     page_predict_raintomorrow.app()
 
-if page == pages[5]:
+elif page == pages[6]:
     page_predict_rain_long_horizon.app()
 
-if page == pages[6]:
+elif page == pages[7]:
     page_predict_maxtemps.app()
 
-if page == pages[7]:
+elif page == pages[8]:
     page_conclusion.app()
 
+# si pas de page valide selectionee, on reviens sur l'intro    
+else:
+    st.write("**Point de menu non relié ("+page+")**")
+    page_introduction.app(pas)

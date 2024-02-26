@@ -230,9 +230,10 @@ class ProjetAustralieSoutenance:
 
         self._ajoute_prop_locations()
 
-        self.remplace_direction_vent() # besoin de supprimer les variables categorielles
+        #self.remplace_direction_vent() # besoin de supprimer les variables categorielles       
+        df = self.df.drop(columns=['WindGustDir', 'WindDir9am','WindDir3pm'])
                        
-        self.df_moyenne = self.df.groupby("Location").agg(["mean", "std"])
+        self.df_moyenne = df.groupby("Location").agg(["mean", "std"])
         self.df_moyenne.columns = ['{}_{}'.format(col[0], col[1]) for col in self.df_moyenne.columns]
         
         self.df_moyenne = self.df_moyenne.dropna(axis=1)
@@ -247,6 +248,9 @@ class ProjetAustralieSoutenance:
                                                         #])
 
         mask_df_moyenne = mask_df_moyenne.drop(['WindSpeed9am_mean', 'WindSpeed9am_std', 
+                                                'WindSpeed3pm_mean', 'WindSpeed3pm_std'])
+        """
+        mask_df_moyenne = mask_df_moyenne.drop(['WindSpeed9am_mean', 'WindSpeed9am_std', 
                                                 'WindSpeed3pm_mean', 'WindSpeed3pm_std', 
                                                 'WindGustDir_RAD_mean', 'WindGustDir_RAD_std', 
                                                 'WindDir3pm_X_mean', 'WindDir3pm_X_std', 
@@ -255,6 +259,7 @@ class ProjetAustralieSoutenance:
                                                 'WindDir9am_X_mean', 'WindDir9am_X_std', 
                                                 'WindDir9am_Y_mean', 'WindDir9am_Y_std', 
                                                 'WindDir9am_RAD_mean', 'WindDir9am_RAD_std'])
+        """
 
         """
         mask_df_moyenne = mask_df_moyenne.drop(['WindSpeed9am_mean', 
@@ -408,34 +413,7 @@ class ProjetAustralieSoutenance:
         plt.subplots_adjust(right=0.9)
         
         # on remet le df tel qu'il etait initialement
-        self.df = self.df_orig
-        
-        
-    def test(self, location:str, df_filtre):        
-        vc = df_filtre.WindGustDir_RAD.value_counts(normalize=True).sort_index()
-        #vc.append(vc[0]) # pour fermer le tracé
-        
-        print (vc)
-        self.vc = vc
-        
-        plt.figure(figsize=(8, 8))
-        ax = plt.subplot(111, polar=True)
-        #ax.set_rlim(0,1/8)
-        ax.fill(np.array(vc.index), vc.values, '#48A', alpha=.8)
-
-        ax.set_xticks(np.arange(2*np.pi, 0, -np.pi/8))
-        ax.set_xticklabels(["E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N", "NNE", "NE", "ENE"])
-        ax.set_yticklabels([])
-        
-        nom_title="Distribution des directions du vent ("+variable+") - "
-        if (location==""):
-            nom_title+="Australie complète"
-        else:
-            nom_title+=location
-        plt.title(nom_title)
-        
-        # on remet le df tel qu'il etait initialement
-        self.df = self.df_orig
+        self.df = self.df_orig.copy()     
 
     # affiche le vent pour une feature
     def graphe_vent_feature(self, df_filtre, location:str, variable:str, ax):

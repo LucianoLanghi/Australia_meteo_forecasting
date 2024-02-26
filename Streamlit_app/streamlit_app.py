@@ -23,8 +23,8 @@ pages = ["Introduction",
          "Pre-processing",
          "Ajout de features",
          "Prédiction de RainTomorrow",
-         "Prédiction de la pluie",
-         "Prédiction de MaxTemps",
+         "Prédiction sur horizon de temps",
+         "Prédiction de MaxTemp",
          "Conclusion"]
 page = st.sidebar.radio("Aller vers ", pages)
 st.header(page)

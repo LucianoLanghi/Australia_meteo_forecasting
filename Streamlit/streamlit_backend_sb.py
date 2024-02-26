@@ -32,6 +32,8 @@ class ProjetAustralieSoutenance:
         self._preprocessing()
         self.is_preprocessing_apres_analyse=False
 
+        self.df_orig = self.df.copy()
+
         # donnees preprocessees
         
         self.X=None
@@ -64,7 +66,7 @@ class ProjetAustralieSoutenance:
         self.lib_climats = {0:"Côte Est", 1:"Nord", 2:"Centre", 3:"Sud-Est", 4:"Intermédiaire", 5:"Mount Ginini", 6:"Côte Sud"}
         
         # evite de reclaculer au vol
-        self.df_resample = self.data
+        self.df_resample = self.data.copy()
         self._ajoute_colonnes_dates()
 
     def _preprocessing(self):
@@ -175,7 +177,7 @@ class ProjetAustralieSoutenance:
     # anime une variable sur avril 2014
     def animation_variable(self, variable:str="RainToday", discrete:bool=False):
         
-        data = self.data.loc[(self.data.index>='2014-04-01')&(self.data.index<='2015-04-30'),:].copy()
+        data = self.data.loc[(self.data.index>='2014-04-01')&(self.data.index<='2014-09-30'),:].copy()
         data["Date"] = data.index
         
         if discrete:
@@ -200,7 +202,9 @@ class ProjetAustralieSoutenance:
                                 range_color=[data[variable].min(), data[variable].max()]
                                 ).update_traces(marker=dict(size=30))
                 
-        fig.update_layout(mapbox_style='open-street-map', width=self.disp_width, height=self.disp_height)
+        #fig.update_layout(mapbox_style='open-street-map', width=self.disp_width, height=self.disp_height, mapbox_zoom=3.3, mapbox_center={"lat": (data.lat.min() + data.lat.max()) / 2, "lon": (data.lng.min() + data.lng.max()) / 2})
+        fig = self.update_layout_australia(fig)
+
         #fig.show(renderer='browser')      
         return fig
 
@@ -220,7 +224,9 @@ class ProjetAustralieSoutenance:
                             #color_discrete_sequence=px.colors.qualitative.T10
                             ).update_traces(marker=dict(size=30))
     
-        fig.update_layout(mapbox_style='open-street-map', width=self.disp_width, height=self.disp_height)
+        #fig.update_layout(mapbox_style='open-street-map', width=self.disp_width, height=self.disp_height, mapbox_zoom=3.3, mapbox_center={"lat": (self.data.lat.min() + self.data.lat.max()) / 2, "lon": (self.data.lng.min() + self.data.lng.max()) / 2})
+        fig = self.update_layout_australia(fig)
+
         #fig.show(renderer='browser')      
         return fig
 
@@ -237,11 +243,16 @@ class ProjetAustralieSoutenance:
         
         fig = px.scatter_mapbox(df_rt, lat='lat', lon='lng', hover_name='Location', color='MaxTemp', size='RainTomorrow', color_continuous_scale='thermal')
 #        fig = px.scatter_geo(df_rt, lat='lat', lon='lng', hover_name='Location', color='MaxTemp', size='RainTomorrow')
-        fig.update_layout(mapbox_style='open-street-map', width=self.disp_width, height=self.disp_height)
-        #fig.update_layout(margin={'r':0, 't':0, 'l':0, 'b':0})
-        #fig.update_geos(projection_type='mercator')
+        
+#fig.update_layout(mapbox_style='open-street-map', width=self.disp_width, height=self.disp_height, mapbox_zoom=3.3, mapbox_center={"lat": (self.data.lat.min() + self.data.lat.max()) / 2, "lon": (self.data.lng.min() + self.data.lng.max()) / 2})
+        fig = self.update_layout_australia(fig)
 
         #fig.show(renderer='browser')             
+        return fig
+
+    # affichage layout Australie
+    def update_layout_australia(self, fig):
+        fig.update_layout(mapbox_style='open-street-map', width=self.disp_width, height=self.disp_height, mapbox_zoom=3.6, mapbox_center={"lat": (self.data.lat.min() + self.data.lat.max()) / 2, "lon": (self.data.lng.min() + self.data.lng.max()) / 2}, margin={"r":0,"t":0,"l":0,"b":0})
         return fig
 
     # charge infos sur villes
@@ -346,6 +357,141 @@ class ProjetAustralieSoutenance:
                                 #color_discrete_sequence=px.colors.qualitative.T10
                                 ).update_traces(marker=dict(size=30))
         
-        fig.update_layout(mapbox_style='open-street-map', width=self.disp_width, height=self.disp_height)
+        
+        #fig.update_layout(mapbox_style='open-street-map', width=self.disp_width, height=self.disp_height)
+        fig = self.update_layout_australia(fig)        
+        
         #fig.show(renderer='browser')      
         return fig
+
+    # graphe des NA par couple Location/feature - si calcule=False, on charge un csv precedemment calculé, sinon, on le calcule
+    def graphe_taux_na_location_feature(self, calcule=False):
+        fig, axes = plt.subplots(1,1,figsize=(24,18))
+        
+        if calcule:
+            # affiche le nb de NA pour chaque variable et pour chaque Location
+            df_nb_na = self.df.groupby('Location').apply(lambda x: x.isna().sum()).drop(columns=["Location"])
+            df_nb = self.df.groupby('Location').size().reset_index(name='NbTotEnregistrements\n(nuls ou non)')
+            
+            df_nb_na = df_nb_na.merge(df_nb, left_index=True, right_on='Location').set_index("Location")
+    
+            # modifie pour avoir des %
+            df_nb_na.iloc[:,:-1] = df_nb_na.iloc[:,:-1].div(df_nb_na.iloc[:,-1], axis=0)*100
+            
+            print("\n Taux de valeurs nulles par Location pour chaque variable\n")
+            print (df_nb_na.iloc[:,1:])
+        else:
+            df_nb_na = pd.read_csv("datasets/df_nb_na.csv", index_col=0)
+        
+        sns.heatmap(df_nb_na.iloc[:,1:-1], cmap='gnuplot2_r', annot=True, fmt=".1f")
+        axes.set_title("Taux de valeurs nulles pour chaque couple Location/variable", fontsize=18)
+        plt.show();
+
+    # affiche matrice corr comme Quyen
+    def matrice_corr_quyen(self, df, titre:str="Corrélations entre variables après ajout des nouvelles variables"):
+        
+        # si oui, c'est qu'on est sur le df initial
+        if hasattr(df, "WindGustDir"):       
+            df = df.drop(columns=['Location', 'Date', 'WindGustDir', 'WindDir9am', 'WindDir3pm'])
+            
+        # là, c'est qu'on est sur la dataset apres processing
+        if hasattr(df, "Climat"):       
+            df = df.drop(columns=['Location'])
+            df = df.loc[:,~df.columns.str.startswith("Rain_J_")]
+            df = df.loc[:,~df.columns.str.startswith("MaxTemp_J_")]
+        
+        cmap = sns.diverging_palette(260, 20, as_cmap=True)
+
+        fig_corr, ax = plt.subplots(figsize=(16,16))
+        corr_mat = df.corr()
+        mask = np.triu(np.ones_like(corr_mat))
+
+        sns.heatmap(corr_mat,
+                    mask=mask,
+                    annot=True,
+                    fmt='.2f',
+                    cmap=cmap,
+                    vmin=-1, vmax=1, 
+                    ax=ax)
+        ax.set_title(titre, fontsize=20)
+
+    # affiche repartition vent    
+    def graphe_vent(self, location:str):
+        if not hasattr(self.df, "WindGustDir_RAD"):       
+            self.remplace_direction_vent()
+        
+        if (location==""):
+            df_filtre = self.df
+        else:
+            df_filtre = self.df[self.data.Location == location]
+       
+        
+        vc = df_filtre.WindGustDir_RAD.value_counts(normalize=True).sort_index()
+        #vc.append(vc[0]) # pour fermer le tracé
+        
+        print (vc)
+        self.vc = vc
+        
+        plt.figure(figsize=(8, 8))
+        ax = plt.subplot(111, polar=True)
+        #ax.set_rlim(0,1/8)
+        ax.fill(np.array(vc.index), vc.values, '#48A', alpha=.8)
+
+        ax.set_xticks(np.arange(2*np.pi, 0, -np.pi/8))
+        ax.set_xticklabels(["E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N", "NNE", "NE", "ENE"])
+        ax.set_yticklabels([])
+        
+        nom_title="Distribution des directions du vent (WindGustDir) - "
+        if (location==""):
+            nom_title+="Australie complète"
+        else:
+            nom_title+=location
+        plt.title(nom_title)
+        
+        # on remet le df tel qu'il etait initialement
+        self.df = self.df_orig
+
+    # remplace les variables categorielles de direction de vent par les composantes x et y
+    def remplace_direction_vent(self):
+        # si deja substitué: on sort
+        if hasattr(self.df, "WindGustDir_X"):
+            return
+        
+        print (self.df.columns)
+        self._remplace_direction_vent("WindGustDir", "WindGustSpeed")
+        print (self.df.columns)
+        self._remplace_direction_vent("WindDir3pm", "WindSpeed3pm")
+        print (self.df.columns)
+        self._remplace_direction_vent("WindDir9am", "WindSpeed9am")       
+        print (self.df.columns)
+    
+    # remplace une colonne categorielle de direction de vent par deux colonnes numeriques
+    def _remplace_direction_vent(self, nom_colonne_dir: str, nom_colonne_speed: str):
+        
+        # on retire les NA de cette variable
+        self.df = self.df.dropna(subset=[nom_colonne_dir])
+        
+        df_direction = pd.DataFrame()
+        df_direction["dir"]=["E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N", "NNE", "NE", "ENE"]
+        
+        # increment pour chacune des directions (sens horaire)
+        increment=-np.pi/8
+        
+        df_direction["rad"]=increment*df_direction.index
+        df_direction["sin"]=np.sin(df_direction.rad)
+        df_direction["cos"]=np.cos(df_direction.rad)
+        
+        df_direction.loc[len(df_direction)]=[None, 0, 0, 0]
+        
+        self.df_dir_vent = df_direction
+        
+        # jointure pour deduire les cos et sin multipliés par la vitesse
+        df_temp = self.df.merge(df_direction, left_on=nom_colonne_dir, right_on="dir")
+        df_temp.index = df_temp.Date
+        df_temp = df_temp.sort_index()
+        
+        df_temp[nom_colonne_dir+"_X"]=df_temp.cos*df_temp[nom_colonne_speed]
+        df_temp[nom_colonne_dir+"_Y"]=df_temp.sin*df_temp[nom_colonne_speed]
+        df_temp[nom_colonne_dir+"_RAD"]=df_temp["rad"]  # on garde rad pour les graphes
+        
+        self.df = df_temp.drop(columns=["cos", "sin", "rad", "dir", nom_colonne_dir])

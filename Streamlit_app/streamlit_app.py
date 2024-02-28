@@ -6,7 +6,6 @@ from pages import page_introduction, page_conclusion, page_jeu_de_donnees, page_
 
 from backend.streamlit_backend_sb import ProjetAustralieSoutenance
 
-
 # affichage large
 st.set_page_config(layout="wide")
 
@@ -15,7 +14,7 @@ pas = ProjetAustralieSoutenance()
 
 st.title("Prévision météo en Australie")
 
-st.sidebar.title("Sommaire")
+st.sidebar.title("Météo en Australie")
 
 pages = ["Introduction",
          "Le jeu de données",
@@ -27,14 +26,28 @@ pages = ["Introduction",
          "Prédiction de MaxTemp",
          "Conclusion"]
 page = st.sidebar.radio("Aller vers ", pages)
-st.header(page)
-st.sidebar.markdown(page)
 
+# Info box
+st.sidebar.info(
+    '''
+    Réalisé par:
+    
+        Sophie BERTHIER
+        
+        Luciano LANGHI
+        
+        Quyen THIEU MARCAUD
+        
+    Sous la supervision de: Francesco MADRISOTTI de Datascientest.
+    '''
+)
+
+st.header(page)
 
 # Introduction à la page 1
 if page == pages[0]:
     page_introduction.app(pas)
-    
+
 elif page == pages[1]:
     page_jeu_de_donnees.app(pas)
 
@@ -59,7 +72,7 @@ elif page == pages[7]:
 elif page == pages[8]:
     page_conclusion.app()
 
-# si pas de page valide selectionee, on reviens sur l'intro    
+# si pas de page valide selectionee, on reviens sur l'intro
 else:
-    st.write("**Point de menu non relié ("+page+")**")
+    st.write("**Point de menu non relié (" + page + ")**")
     page_introduction.app(pas)
